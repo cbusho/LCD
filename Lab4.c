@@ -16,22 +16,24 @@ char LCDCON;
 
 void setSSLow(){
 	 	 	 	 	 P1DIR |= BIT0;
-	 	 	 	 	 P1OUT |= BIT0;
+	 	 	 	 	 P1OUT &= ~BIT0;
 }
 
 void setSSHigh(){
 					 P1DIR |= BIT0;
-					 P1OUT &= ~BIT0;
+					 P1OUT |= BIT0;
 }
 
-void SPISEND(char clear){
+void SPISEND(char byteToSend){
+					volatile char readByte;
+
 					setSSLow();
 
-					UCB0TXBUF = clear;
+					UCB0TXBUF = byteToSend;
 
 					while(!(UCB0RXIFG & IFG2)){}
 
-					int temp = UCB0RXBUF;
+					readByte = UCB0RXBUF;
 
 					setSSHigh();
 }
@@ -46,19 +48,19 @@ void LCDWRT4(char ByteToWrite){
 
 	                  SPISEND(ByteToWrite);
 
-	                  __delay_cycles(100);
+	                  __delay_cycles(1000);
 
 	                  ByteToWrite |= 0x80;                                               // set E high
 
 	                  SPISEND(ByteToWrite);
 
-	                  __delay_cycles(100);
+	                  __delay_cycles(1000);
 
 	                  ByteToWrite &= 0x7f;                                                 // set E low
 
 	                  SPISEND(ByteToWrite);
 
-	                  __delay_cycles(100);
+	                  __delay_cycles(1000);
 
 }
 
@@ -84,7 +86,7 @@ void writeDataByte(char dataByte){
 
 					LCDWRT8(dataByte);
 
-					__delay_cycles(100);
+					__delay_cycles(1000);
 }
 
 void writeCommandNibble(char commandNibble){
@@ -92,7 +94,7 @@ void writeCommandNibble(char commandNibble){
 
 					LCDWRT4(commandNibble);
 
-					__delay_cycles(100);
+					__delay_cycles(1000);
 }
 
 void writeCommandByte(char commandByte){
@@ -100,38 +102,36 @@ void writeCommandByte(char commandByte){
 
 					LCDWRT8(commandByte);
 
-					__delay_cycles(100);
+					__delay_cycles(1000);
 
 }
 
 void initSPI(){
  		UCB0CTL1 |= UCSWRST;
 
-        UCB0CTL0 |= UCCKPH, UCMSB, UCMST, UCSYNC;
+        UCB0CTL0 |= UCCKPH|UCMSB|UCMST|UCSYNC;
 
         UCB0CTL1 |= UCSSEL1;
 
         UCB0STAT |= UCLISTEN;                              // enables internal loopback
 
 		P1SEL |= BIT5;
-		P2SEL |= BIT5;        								// make clock abailable on P1.5
+		P1SEL2 |= BIT5;        								// make clock abailable on P1.5
 
 
 		P1SEL |= BIT6;                             // make UCB0SSOMI available on P1.6
-		P2SEL |= BIT6;
+		P1SEL2 |= BIT6;
 
 
 		P1SEL |= BIT7;                             // make UCB0SSIMO available on P1.7
-        P2SEL |= BIT7;
+        P1SEL2 |= BIT7;
 
         UCB0CTL1 &= ~UCSWRST;                               // enable subsystem
 
 }
 
 void LCDinit(){
-    			LCDCON = 0;                                             // initialize control bits
-
-                writeCommandNibble(0x03);
+    			writeCommandNibble(0x03);
 
                 writeCommandNibble(0x03);
 
@@ -153,7 +153,7 @@ void LCDinit(){
 
                 SPISEND(0);                                                  // clear register
 
-                __delay_cycles(100);
+                __delay_cycles(1000);
 
 }
 
@@ -162,7 +162,7 @@ void LCDclear(){
 
 				LCDCON |= RS_MASK;
 
-				__delay_cycles(100);
+				__delay_cycles(1000);
 }
 
 void cursorToLineTwo(){
@@ -170,7 +170,7 @@ void cursorToLineTwo(){
 
 				LCDCON |= RS_MASK;
 
-				__delay_cycles(100);
+				__delay_cycles(1000);
 }
 
 void cursorToLineOne(){
@@ -178,37 +178,30 @@ void cursorToLineOne(){
 
 				LCDCON |= RS_MASK;
 
-				__delay_cycles(100);
+				__delay_cycles(1000);
 }
 
 void writeChar(char asciiChar){
 				writeDataByte(asciiChar);
 }
 
-void writeString(char * string, char stringLength){
+void writeString(char string[], char stringLength){
 				char i = 0;
 				for(i = 0; i < stringLength; i++){
-					writeDataByte(string[i]);
+					writeChar(string[i]);
 				}
 }
 
-void scrollString(char * string1, char * string2, char string1Length, char string2Length){
+void scrollString(char string[], char stringLength){
 				char i = 0;
-				writeString(string1, string1Length);
-				cursorToLineTwo();
-				writeString(string2, string2Length);
-				cursorToLineOne();
-				char maxStringLength = string2Length;
-				if (string1Length > string2Length){
-					maxStringLength = string1Length;
+				int temp = 0;
+				temp = string[0];
+
+				for(i = 0; i < stringLength; i++){
+					string[i] = string[i+1];
 				}
-				for(i = 0; i < maxStringLength; i++){
-					writeCommandByte(0x18);
-					cursorToLineTwo();
-					writeCommandByte(0x18);
-					cursorToLineOne();
-				}
-				LCDclear();
+				string[stringLength - 1] = temp;
+
 }
 
 

@@ -21,8 +21,8 @@ void cursorToLineOne();
 
 void writeChar(char asciiChar);
 
-void writeString(char * string, char stringLength);
+void writeString(char string[], char stringLength);
 
-void scrollString(char * string1, char * string2, char string1Length, char string2Length);
+void scrollString(char string[], char stringLength);
 
 #endif /* LAB4_H_ */
